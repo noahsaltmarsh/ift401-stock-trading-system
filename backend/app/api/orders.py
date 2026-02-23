@@ -49,3 +49,16 @@ def sell_order():
         "user_id": body.user_id,
     }
 
+
+@router.post("/cancel/{order_id}")
+def cancel_order():
+    # Temporary defaults (we'll replace with DB/admin settings later)
+    settings = MarketSettings(open_time=time(9, 30), close_time=time(16, 0))
+    require_market_open(datetime.now(), settings)
+
+    return {
+        "status": "accepted",
+        "action": "cancel",
+        "order_id": order_id,
+        "user_id": user_id,
+    }
