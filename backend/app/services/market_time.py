@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, time, date
 from typing import Set
+import os
 
 
 @dataclass
@@ -12,7 +13,8 @@ class MarketSettings:
     holidays: Set[date] = field(default_factory=set)
     
     
-DEV_ALWAYS_OPEN = True   # temporary for development
+DEV_ALWAYS_OPEN = os.getenv("DEV_ALWAYS_OPEN", "false").lower() == "true"
+
 
 def is_market_open(now: datetime, settings: MarketSettings) -> bool:
     if DEV_ALWAYS_OPEN:
@@ -25,6 +27,4 @@ def is_market_open(now: datetime, settings: MarketSettings) -> bool:
         return False
     t = now.time()
     return settings.open_time <= t < settings.close_time
-
-
 
