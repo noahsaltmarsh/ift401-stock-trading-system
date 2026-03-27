@@ -13,11 +13,10 @@ class MarketSettings:
     holidays: Set[date] = field(default_factory=set)
     
     
-DEV_ALWAYS_OPEN = os.getenv("DEV_ALWAYS_OPEN", "false").lower() == "true"
 
 
 def is_market_open(now: datetime, settings: MarketSettings) -> bool:
-    if DEV_ALWAYS_OPEN:
+    if os.getenv("DEV_ALWAYS_OPEN", "false").lower() == "true":
         return True
     # Closed on weekends
     if now.weekday() >= 5:
