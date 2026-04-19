@@ -36,8 +36,7 @@ from ..db.session import SessionLocal, set_search_path_to_trading
 
 from ..db.models import (
 
-    User, CashAccount, Stock, Order, Transaction
-
+    User, CashAccount, Stock, Order, Transaction, MarketHours
 )
 
 from ..services.market_guard import require_market_open
@@ -120,11 +119,17 @@ def get_db() -> Generator[Session, None, None]:
 
  
 
-def _market_settings() -> MarketSettings:
+def _market_settings(db: Session) -> MarketSettings:
+    settings = db.query(MarketHours).first()
 
-    """Hard-coded open/close for now; admin-config later."""
+    if not settings:
+        # fallback if nothing set yet
+        return MarketSettings(open_time=time(9, 30), close_time=time(16, 0))
 
-    return MarketSettings(open_time=time(9, 30), close_time=time(16, 0))
+    return MarketSettings(
+        open_time=settings.opens_at,
+        close_time=settings.closes_at
+    )
 
  
 
@@ -208,7 +213,7 @@ def buy_order(body: BuyRequest, db: Session = Depends(get_db)):
 
     # Market hours (dev bypass handled inside require_market_open via env)
 
-    settings = _market_settings()
+    settings = _market_settings(db)
 
     require_market_open(datetime.now(), settings)
 
@@ -356,7 +361,7 @@ def sell_order(body: SellRequest, db: Session = Depends(get_db)):
 
     # Market hours (dev bypass handled inside require_market_open via env)
 
-    settings = _market_settings()
+    settings = _market_settings(db)
 
     require_market_open(datetime.now(), settings)
 
@@ -507,7 +512,7 @@ def cancel_order(
     db: Session = Depends(get_db)
 ):
     # Market hours (dev bypass handled inside require_market_open)
-    settings = _market_settings()
+    settings = _market_settings(db)
     require_market_open(datetime.now(), settings)
 
     # Load order
