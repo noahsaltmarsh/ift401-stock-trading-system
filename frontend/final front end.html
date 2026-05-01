@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TradeDesk — IFT401 Stock Trading System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181b22;
+    --border: #222630;
+    --accent: #00e5a0;
+    --accent2: #0066ff;
+    --red: #ff4757;
+    --yellow: #ffd32a;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TICKER TAPE ── */
+  .ticker-wrap {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .ticker-inner { display: inline-block; animation: ticker 30s linear infinite; }
+  .ticker-item { display: inline-block; padding: 0 32px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .ticker-item .up { color: var(--accent); }
+  .ticker-item .down { color: var(--red); }
+  @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 60px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo { font-family: var(--display); font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+  .logo span { color: var(--accent); }
+
+  .market-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px;
+    padding: 5px 12px; border: 1px solid var(--border);
+    border-radius: 4px; background: var(--surface2);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+  .dot.open { background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(0,229,160,.4); }
+    50% { opacity:.8; box-shadow: 0 0 0 6px rgba(0,229,160,0); }
+  }
+
+  nav { display: flex; align-items: center; gap: 4px; }
+  nav button {
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border: none; border-radius: 4px;
+    background: transparent; color: var(--muted); cursor: pointer; transition: all .2s;
+  }
+  nav button:hover { color: var(--text); background: var(--surface2); }
+  nav button.active { color: var(--accent); background: rgba(0,229,160,.08); }
+
+  .user-info { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .cash-display {
+    font-family: var(--mono); font-size: 13px; color: var(--accent);
+    padding: 5px 12px; border: 1px solid rgba(0,229,160,.2);
+    border-radius: 4px; background: rgba(0,229,160,.05);
+  }
+  .user-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--bg); cursor: pointer;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: none; }
+  .app.active { display: block; }
+  main { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+
+  .page-title {
+    font-family: var(--display); font-size: 26px; font-weight: 700;
+    margin-bottom: 24px; letter-spacing: -0.5px;
+  }
+  .page-title span { color: var(--muted); font-weight: 400; font-size: 16px; margin-left: 10px; }
+
+  /* ── CARDS ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; }
+  .card-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .card-value { font-family: var(--display); font-size: 28px; font-weight: 700; }
+  .card-value.green { color: var(--accent); }
+  .card-value.red { color: var(--red); }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .table-title { font-family: var(--display); font-size: 15px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--surface2); }
+  th { text-align: left; padding: 10px 20px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 400; }
+  td { padding: 13px 20px; border-top: 1px solid var(--border); font-size: 13px; }
+  tr:hover td { background: var(--surface2); }
+  .mono { font-family: var(--mono); }
+  .green { color: var(--accent); }
+  .red { color: var(--red); }
+  .muted { color: var(--muted); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 8px 18px; border: none; border-radius: 5px;
+    cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-buy { background: var(--accent); color: var(--bg); }
+  .btn-buy:hover { background: #00ffb3; transform: translateY(-1px); }
+  .btn-sell { background: var(--red); color: #fff; }
+  .btn-sell:hover { background: #ff6b78; transform: translateY(-1px); }
+  .btn-cancel { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-cancel:hover { border-color: var(--red); color: var(--red); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent2); color: #fff; }
+  .btn-primary:hover { background: #3385ff; }
+  .btn-warning { background: var(--yellow); color: var(--bg); }
+  .btn-warning:hover { background: #ffe066; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-lg { padding: 12px 28px; font-size: 15px; font-weight: 600; width: 100%; justify-content: center; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 28px; width: 420px; max-width: 90vw;
+    animation: slide-up .2s ease;
+  }
+  @keyframes slide-up { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .modal-title {
+    font-family: var(--display); font-size: 18px; font-weight: 700;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .modal-close { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+
+  /* ── FORMS ── */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
+  input, select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-family: var(--sans);
+    font-size: 14px; padding: 10px 14px; outline: none; transition: border-color .2s;
+  }
+  input:focus, select:focus { border-color: var(--accent2); }
+  select option { background: var(--surface2); }
+
+  .info-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin: 16px 0; font-size: 13px; }
+  .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-row .val { font-family: var(--mono); }
+  .info-row .val.green { color: var(--accent); }
+  .info-row .val.red { color: var(--red); }
+
+  /* ── AUTH PAGE ── */
+  .auth-page {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); position: relative; overflow: hidden;
+  }
+  .auth-page::before {
+    content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,102,255,.08) 0%, transparent 70%);
+    top: -200px; right: -200px; pointer-events: none;
+  }
+  .auth-page::after {
+    content: ''; position: absolute; width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,160,.06) 0%, transparent 70%);
+    bottom: -100px; left: -100px; pointer-events: none;
+  }
+  .auth-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 40px; width: 420px; max-width: 90vw;
+    position: relative; z-index: 1;
+  }
+  .auth-logo { font-family: var(--display); font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+  .auth-logo span { color: var(--accent); }
+  .auth-sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-radius: 6px; padding: 3px; margin-bottom: 24px; }
+  .auth-tab { padding: 7px; text-align: center; border-radius: 4px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); border: none; background: none; font-family: var(--sans); transition: all .2s; }
+  .auth-tab.active { background: var(--surface); color: var(--text); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 18px; font-size: 13px;
+    z-index: 999; display: none; max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4); animation: slide-up .2s ease;
+  }
+  #toast.show { display: block; }
+  #toast.success { border-left: 3px solid var(--accent); }
+  #toast.error { border-left: 3px solid var(--red); }
+  #toast.info { border-left: 3px solid var(--accent2); }
+
+  /* ── STATUS TAGS ── */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-family: var(--mono); font-size: 11px; font-weight: 500; }
+  .tag-executed { background: rgba(0,229,160,.12); color: var(--accent); }
+  .tag-pending { background: rgba(255,211,42,.12); color: var(--yellow); }
+  .tag-canceled { background: rgba(255,71,87,.12); color: var(--red); }
+  .tag-buy { background: rgba(0,229,160,.12); color: var(--accent); }
+  .tag-sell { background: rgba(255,71,87,.12); color: var(--red); }
+  .tag-deposit { background: rgba(0,102,255,.12); color: var(--accent2); }
+  .tag-withdrawal { background: rgba(255,211,42,.12); color: var(--yellow); }
+
+  /* ── PORTFOLIO HOLDINGS ── */
+  .holding-row { display: flex; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border); gap: 16px; }
+  .holding-ticker { font-family: var(--display); font-size: 16px; font-weight: 700; width: 70px; }
+  .holding-bar-wrap { flex: 1; }
+  .holding-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .holding-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .holding-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
+  .holding-value { text-align: right; }
+  .holding-value .shares { font-family: var(--mono); font-size: 13px; }
+  .holding-value .worth { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── ADMIN SECTION ── */
+  .section-divider { display: flex; align-items: center; gap: 12px; margin: 28px 0 20px; }
+  .section-divider span { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); white-space: nowrap; }
+  .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── PRICE GENERATOR PANEL ── */
+  .price-gen-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; max-width: 560px;
+  }
+  .price-gen-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .price-gen-title { font-family: var(--display); font-size: 15px; font-weight: 600; }
+  .price-gen-badge {
+    font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+    background: rgba(0,229,160,.1); color: var(--accent);
+    border: 1px solid rgba(0,229,160,.2); border-radius: 3px;
+  }
+  .price-gen-log {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px; margin-top: 16px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    max-height: 120px; overflow-y: auto;
+  }
+  .price-gen-log .log-entry { margin-bottom: 4px; }
+  .price-gen-log .log-entry .up { color: var(--accent); }
+  .price-gen-log .log-entry .down { color: var(--red); }
+
+  /* ── FUNCTION BADGE ── */
+  .fn-badge {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    padding: 2px 8px; background: rgba(0,102,255,.15); color: var(--accent2);
+    border: 1px solid rgba(0,102,255,.3); border-radius: 3px; margin-bottom: 8px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    header { padding: 0 16px; }
+    nav button { padding: 5px 10px; }
+    main { padding: 20px 16px; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* spinning loader */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ AUTH PAGE ═══════════ -->
+<div id="auth-page" class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">Trade<span>Desk</span></div>
+    <div class="auth-sub">IFT401 Stock Trading System — Final Build</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+    </div>
+
+    <!-- Login -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="login-username" placeholder="customer1" value="customer1"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" value="password"/>
+      </div>
+      <button class="btn btn-buy btn-lg" onclick="doLogin()">Sign In →</button>
+      <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--muted)">
+        Trainee: <b>customer1</b> &nbsp;|&nbsp; Admin: <b>admin1</b>
+      </div>
+    </div>
+
+    <!-- Register -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="reg-fullname" placeholder="John Smith"/>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="jsmith"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="john@email.com"/>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="doRegister()">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="main-app" style="display:none">
+
+  <!-- Ticker Tape -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner" id="ticker-inner"></div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">Trade<span>Desk</span></div>
+    <nav>
+      <button class="active" onclick="showPage('market')">Market</button>
+      <button onclick="showPage('portfolio')">Portfolio</button>
+      <button onclick="showPage('history')">History</button>
+      <button onclick="showPage('cash')">Cash</button>
+      <button id="admin-nav-btn" onclick="showPage('admin')" style="display:none">Admin</button>
+    </nav>
+    <div class="user-info">
+      <div class="market-badge">
+        <div class="dot" id="market-dot"></div>
+        <span id="market-status-text">CLOSED</span>
+      </div>
+      <div class="cash-display" id="header-cash">$0.00</div>
+      <div class="user-avatar" id="user-avatar" onclick="doLogout()">R</div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════
+       MARKET PAGE — Function #1 (Market Hours) + Function #5 (Price Generator)
+  ══════════════════════════════════════ -->
+  <div id="page-market" class="app active">
+    <main>
+      <div class="page-title">Market <span>Live Stock Listing</span></div>
+
+      <!-- Market Status Banner (Function #1) -->
+      <div id="market-banner" style="margin-bottom:20px; padding:14px 20px; border-radius:8px; border:1px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:16px">
+          <div>
+            <div class="fn-badge">Function #1 — Market Hours Enforcement</div>
+            <div style="font-size:13px; color:var(--muted)">Trading is only allowed during configured market hours on weekdays.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <div id="market-hours-display" style="font-family:var(--mono); font-size:12px; color:var(--muted)">Hours: 09:30 – 16:00</div>
+          <div id="market-status-banner" style="font-family:var(--mono); font-size:13px; font-weight:700; color:var(--red)">● CLOSED</div>
+        </div>
+      </div>
+
+      <!-- Stock Table -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">Available Stocks</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="loadStocks()">↻ Refresh</button>
+            <button class="btn btn-warning btn-sm" onclick="triggerPriceGenerator()" id="gen-btn" title="Function #5 — Manually trigger price update" style="display:none">⚡ Generate Prices</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Company</th>
+              <th>Price</th>
+              <th>Open</th>
+              <th>High</th>
+              <th>Low</th>
+              <th>Volume</th>
+              <th>Mkt Cap</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="stocks-tbody">
+            <tr><td colspan="9" class="muted" style="text-align:center; padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Price Generator Log (Function #5) — Admin only -->
+      <div id="market-price-gen-panel" style="margin-top:20px; display:none">
+        <div class="price-gen-panel">
+          <div class="price-gen-header">
+            <div>
+              <div class="fn-badge">Function #5 — Price Generator (Manual Execution)</div>
+              <div class="price-gen-title">Random Stock Price Generator</div>
+            </div>
+            <div class="price-gen-badge" id="auto-gen-status">AUTO ● RUNNING</div>
+          </div>
+          <div style="font-size:12px; color:var(--muted); margin-bottom:12px">
+            The backend auto-updates all prices every 15 seconds (±2% random change). Click <b>⚡ Generate Prices</b> above to manually trigger a price update immediately.
+          </div>
+          <div class="price-gen-log" id="price-gen-log">
+            <div class="log-entry" style="color:var(--muted)">Waiting for price updates...</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PORTFOLIO PAGE — Function #3
+  ══════════════════════════════════════ -->
+  <div id="page-portfolio" class="app">
+    <main>
+      <div class="page-title">Portfolio <span>Your Holdings</span></div>
+
+      <div class="fn-badge" style="margin-bottom:16px">Function #3 — Portfolio &amp; Transactions</div>
+
+      <div class="grid-4" id="portfolio-stats">
+        <div class="card">
+          <div class="card-label">Cash Balance</div>
+          <div class="card-value green" id="port-cash">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Holdings Value</div>
+          <div class="card-value" id="port-value">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Account Value</div>
+          <div class="card-value" id="port-total">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Positions</div>
+          <div class="card-value" id="port-positions">—</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">Holdings</div>
+          <button class="btn btn-outline btn-sm" onclick="renderPortfolio()">↻ Refresh</button>
+        </div>
+        <div id="holdings-list">
+          <div class="empty-state"><div class="icon">📊</div><p>No holdings yet. Buy some stocks from the Market.</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       HISTORY PAGE — Function #3
+  ══════════════════════════════════════ -->
+  <div id="page-history" class="app">
+    <main>
+      <div class="page-title">Transaction History <span>All Activity</span></div>
+      <div class="fn-badge" style="margin-bottom:16px">Function #3 — Portfolio &amp; Transactions</div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">All Transactions</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="txn-count">0 records</span>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date / Time</th>
+              <th>Type</th>
+              <th>Stock</th>
+              <th>Shares</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div><p>No transactions yet.</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       CASH PAGE
+  ══════════════════════════════════════ -->
+  <div id="page-cash" class="app">
+    <main>
+      <div class="page-title">Cash Account</div>
+
+      <div class="grid-2" style="max-width:700px">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-label">Available Balance</div>
+            <div class="card-value green" id="cash-balance-display">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Account ID</div>
+            <div style="font-family:var(--mono); font-size:16px; color:var(--muted)" id="cash-user-id">—</div>
+          </div>
+        </div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+          <div class="card-label" style="margin-bottom:0">Quick Actions</div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Amount ($)</label>
+            <input type="number" id="cash-amount" placeholder="1000.00" min="0.01" step="0.01"/>
+          </div>
+          <div style="display:flex; gap:10px">
+            <button class="btn btn-buy" style="flex:1" onclick="doCash('deposit')">+ Deposit</button>
+            <button class="btn btn-sell" style="flex:1" onclick="doCash('withdraw')">− Withdraw</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       ADMIN PAGE — Function #4 (Admin Controls) + Function #1 (Market Hours)
+  ══════════════════════════════════════ -->
+  <div id="page-admin" class="app">
+    <main>
+      <div class="page-title">Admin Panel <span>System Management</span></div>
+
+      <!-- CREATE STOCK (Function #4) -->
+      <div class="section-divider"><span>Function #4 — Create New Stock</span></div>
+
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:24px; max-width:600px">
+        <div class="fn-badge" style="margin-bottom:12px">Admin Controls — Stock Creation</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+          <div class="form-group">
+            <label>Ticker Symbol</label>
+            <input type="text" id="admin-ticker" placeholder="MSFT" maxlength="10" style="text-transform:uppercase"/>
+          </div>
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="admin-company" placeholder="Microsoft Corp."/>
+          </div>
+          <div class="form-group">
+            <label>Initial Price ($)</label>
+            <input type="number" id="admin-price" placeholder="150.00" min="0.01" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Volume (shares)</label>
+            <input type="number" id="admin-volume" placeholder="100000000" min="1"/>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="adminCreateStock()">+ Create Stock</button>
+      </div>
+
+      <!-- MARKET HOURS (Function #1 + #4) -->
+      <div class="section-divider"><span>Function #1 &amp; #4 — Market Hours Configuration</span></div>
+
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:24px; max-width:600px">
+        <div class="fn-badge" style="margin-bottom:12px">Admin Controls — Market Schedule</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px">
+          <div class="form-group">
+            <label>Market Open Time</label>
+            <input type="time" id="admin-open" value="09:30"/>
+          </div>
+          <div class="form-group">
+            <label>Market Close Time</label>
+            <input type="time" id="admin-close" value="16:00"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Market Holidays (comma-separated, e.g. 2026-07-04)</label>
+          <input type="text" id="admin-holidays" placeholder="2026-07-04, 2026-12-25"/>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="adminSaveHours()">Save Market Settings</button>
+          <button class="btn btn-sell btn-sm" onclick="adminCloseMarket()">Force Close Market</button>
+          <button class="btn btn-buy btn-sm" onclick="adminOpenMarket()">Force Open Market</button>
+        </div>
+
+        <div class="info-box" style="margin-top:16px; margin-bottom:0">
+          <div class="info-row">
+            <span>Current Open</span>
+            <span class="val mono" id="admin-cur-open">09:30</span>
+          </div>
+          <div class="info-row">
+            <span>Current Close</span>
+            <span class="val mono" id="admin-cur-close">16:00</span>
+          </div>
+          <div class="info-row">
+            <span>Market Status</span>
+            <span class="val" id="admin-market-status">—</span>
+          </div>
+          <div class="info-row">
+            <span>Trading Enforcement</span>
+            <span class="val mono green">ACTIVE — 403 on closed market</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRICE GENERATOR (Function #5) -->
+      <div class="section-divider"><span>Function #5 — Price Generator</span></div>
+
+      <div class="price-gen-panel" style="max-width:600px">
+        <div class="price-gen-header">
+          <div>
+            <div class="fn-badge">Manual Price Generation</div>
+            <div class="price-gen-title">Random Stock Price Generator</div>
+          </div>
+          <div class="price-gen-badge">AUTO ● RUNNING</div>
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:16px">
+          Backend thread auto-updates prices every 15 seconds (±2% random change). Use manual trigger for immediate update.
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:16px">
+          <button class="btn btn-warning" onclick="triggerPriceGenerator()" style="flex:1">⚡ Trigger Manual Price Update</button>
+        </div>
+        <div class="price-gen-log" id="admin-price-log">
+          <div class="log-entry" style="color:var(--muted)">No manual triggers yet...</div>
+        </div>
+      </div>
+
+      <!-- STOCK LIST -->
+      <div class="section-divider"><span>All Stocks</span></div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">Stock List</div>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="admin-stock-count">—</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Ticker</th><th>Company</th><th>Current Price</th><th>Open</th><th>High</th><th>Low</th><th>Volume</th><th>Mkt Cap</th></tr>
+          </thead>
+          <tbody id="admin-stocks-tbody">
+            <tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+</div><!-- /main-app -->
+
+<!-- ═══════════ BUY MODAL — Function #2 ═══════════ -->
+<div class="modal-overlay" id="buy-modal">
+  <div class="modal">
+    <div class="modal-title">
+      📈 Buy Stock
+      <button class="modal-close" onclick="closeModal('buy-modal')">✕</button>
+    </div>
+    <div class="fn-badge" style="margin-bottom:12px">Function #2 — Buy/Sell Orders</div>
+    <div class="form-group">
+      <label>Stock</label>
+      <input type="text" id="buy-ticker-display" readonly style="font-family:var(--mono); color:var(--accent)"/>
+    </div>
+    <div class="form-group">
+      <label>Shares to Buy</label>
+      <input type="number" id="buy-shares" placeholder="10" min="1" oninput="updateBuyCalc()"/>
+    </div>
+    <div class="info-box">
+      <div class="info-row"><span>Current Price</span><span class="val mono green" id="buy-price">—</span></div>
+      <div class="info-row"><span>Estimated Cost</span><span class="val mono" id="buy-cost">—</span></div>
+      <div class="info-row"><span>Cash Available</span><span class="val mono" id="buy-avail">—</span></div>
+      <div class="info-row"><span>After Purchase</span><span class="val mono" id="buy-after">—</span></div>
+    </div>
+    <div id="market-closed-warning" style="display:none; background:rgba(255,71,87,.08); border:1px solid rgba(255,71,87,.3); border-radius:6px; padding:10px 14px; font-size:12px; color:var(--red); margin-bottom:12px">
+      ⛔ Market is closed — orders will be rejected with 403 Forbidden
+    </div>
+    <button class="btn btn-buy btn-lg" onclick="submitBuy()">Confirm Buy Order →</button>
+  </div>
+</div>
+
+<!-- ═══════════ SELL MODAL — Function #2 ═══════════ -->
+<div class="modal-overlay" id="sell-modal">
+  <div class="modal">
+    <div class="modal-title">
+      📉 Sell Stock
+      <button class="modal-close" onclick="closeModal('sell-modal')">✕</button>
+    </div>
+    <div class="fn-badge" style="margin-bottom:12px">Function #2 — Buy/Sell Orders</div>
+    <div class="form-group">
+      <label>Stock</label>
+      <input type="text" id="sell-ticker-display" readonly style="font-family:var(--mono); color:var(--red)"/>
+    </div>
+    <div class="form-group">
+      <label>Shares to Sell</label>
+      <input type="number" id="sell-shares" placeholder="5" min="1" oninput="updateSellCalc()"/>
+    </div>
+    <div class="info-box">
+      <div class="info-row"><span>Current Price</span><span class="val mono" id="sell-price">—</span></div>
+      <div class="info-row"><span>Shares You Own</span><span class="val mono" id="sell-owned">—</span></div>
+      <div class="info-row"><span>Estimated Proceeds</span><span class="val mono green" id="sell-proceeds">—</span></div>
+    </div>
+    <div id="market-closed-warning-sell" style="display:none; background:rgba(255,71,87,.08); border:1px solid rgba(255,71,87,.3); border-radius:6px; padding:10px 14px; font-size:12px; color:var(--red); margin-bottom:12px">
+      ⛔ Market is closed — orders will be rejected with 403 Forbidden
+    </div>
+    <button class="btn btn-sell btn-lg" onclick="submitSell()">Confirm Sell Order →</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════
+const API = 'http://localhost:8000';
+
+let state = {
+  user: null,
+  stocks: [],
+  marketOpen: false,
+};
+
+// ── MOCK DATA ──
+const MOCK_STOCKS = [
+  { ticker:'AAPL', company_name:'Apple Inc.',        current_price_cents:18000, opening_price_cents:17800, daily_high_cents:18200, daily_low_cents:17600, volume:1000000000 },
+  { ticker:'TSLA', company_name:'Tesla, Inc.',        current_price_cents:24000, opening_price_cents:23500, daily_high_cents:24300, daily_low_cents:23000, volume:800000000 },
+  { ticker:'MSFT', company_name:'Microsoft Corp.',    current_price_cents:38500, opening_price_cents:38000, daily_high_cents:38800, daily_low_cents:37900, volume:750000000 },
+  { ticker:'NVDA', company_name:'NVIDIA Corporation', current_price_cents:92000, opening_price_cents:91000, daily_high_cents:93500, daily_low_cents:90500, volume:600000000 },
+  { ticker:'AMZN', company_name:'Amazon.com, Inc.',   current_price_cents:19500, opening_price_cents:19200, daily_high_cents:19800, daily_low_cents:19100, volume:900000000 },
+];
+
+// Per-user accounts — each user has own cash, holdings, transactions
+// Stocks and market status are SHARED (global) across all users
+const USER_ACCOUNTS = {
+  customer1: {
+    id:1, role:'customer', name:'Customer One',
+    cash: 1000000,
+    holdings: { AAPL: 10, TSLA: 5 },
+    txns: [
+      { date:'2026-03-10 09:45', type:'deposit', ticker:null,   shares:null, amount:1000000, status:'executed' },
+      { date:'2026-03-10 10:02', type:'buy',      ticker:'AAPL', shares:10,   amount:180000,  status:'executed' },
+      { date:'2026-03-12 11:15', type:'buy',      ticker:'TSLA', shares:5,    amount:120000,  status:'executed' },
+    ]
+  },
+  admin1: {
+    id:2, role:'admin', name:'Admin User',
+    cash: 0,
+    holdings: {},
+    txns: []
+  },
+};
+
+// These point to the current user's data — swapped on each login
+let DEMO_CASH     = 0;
+let DEMO_HOLDINGS = {};
+let DEMO_TXNS     = [];
+
+// Price generator log entries
+let priceGenLog = [];
+
+// Force override flag — prevents interval from resetting manual open/close
+let marketForceOverride = false;
+
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('login-form').style.display    = tab === 'login' ? '' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+}
+
+function doLogin() {
+  const u     = document.getElementById('login-username').value.trim();
+  const found = USER_ACCOUNTS[u];
+  if (!found) return toast('User not found. Try customer1 or admin1', 'error');
+  state.user = { id: found.id, role: found.role, name: found.name, username: u };
+  // Load THIS user's personal data
+  DEMO_CASH     = found.cash;
+  DEMO_HOLDINGS = found.holdings;
+  DEMO_TXNS     = found.txns;
+  bootApp();
+}
+
+function doRegister() {
+  const name  = document.getElementById('reg-fullname').value.trim();
+  const uname = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  if (!name || !uname || !email) return toast('Please fill all fields', 'error');
+  if (!email.includes('@'))      return toast('Invalid email format', 'error');
+  if (USER_ACCOUNTS[uname])      return toast('Username already taken', 'error');
+  USER_ACCOUNTS[uname] = { id: Date.now(), role:'customer', name, cash: 0, holdings: {}, txns: [] };
+  toast('Account created! Please sign in.', 'success');
+  switchAuthTab('login');
+  document.getElementById('login-username').value = uname;
+}
+
+function bootApp() {
+  document.getElementById('auth-page').style.display = 'none';
+  document.getElementById('main-app').style.display  = 'block';
+  const initials = state.user.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('cash-user-id').textContent = `User #${state.user.id} — ${state.user.username}`;
+  if (state.user.role === 'admin') {
+    document.getElementById('admin-nav-btn').style.display        = '';
+    document.getElementById('gen-btn').style.display              = '';
+    document.getElementById('market-price-gen-panel').style.display = '';
+  }
+  showPage('market');
+  loadStocks();
+  // If admin forced a market state, show it immediately without rechecking
+  if (marketForceOverride) {
+    updateMarketUI();
+  } else {
+    checkMarketStatus();
+  }
+  // Auto check market every 30s
+  setInterval(checkMarketStatus, 30000);
+  // Auto tick prices (simulates backend 15s thread)
+  setInterval(tickPrices, 15000);
+}
+
+function doLogout() {
+  if (!confirm('Sign out?')) return;
+  // Save current user's data back before logging out
+  if (state.user) {
+    const acct = USER_ACCOUNTS[state.user.username];
+    if (acct) {
+      acct.cash     = DEMO_CASH;
+      acct.holdings = DEMO_HOLDINGS;
+      acct.txns     = DEMO_TXNS;
+    }
+  }
+  document.getElementById('main-app').style.display               = 'none';
+  document.getElementById('auth-page').style.display              = 'flex';
+  document.getElementById('admin-nav-btn').style.display          = 'none';
+  document.getElementById('gen-btn').style.display                = 'none';
+  document.getElementById('market-price-gen-panel').style.display = 'none';
+  // Do NOT reset marketForceOverride here — customer should see
+  // whatever market status admin has set (open or closed)
+  state.user = null;
+}
+
+// ═══════════════════════════════════════
+//  PAGES
+// ═══════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.app').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => {
+    if (b.textContent.toLowerCase().includes(name)) b.classList.add('active');
+  });
+  if (name === 'portfolio') renderPortfolio();
+  if (name === 'history')   renderHistory();
+  if (name === 'cash')      renderCash();
+  if (name === 'admin')     { renderAdminStocks(); checkMarketStatus(); }
+}
+
+// ═══════════════════════════════════════
+//  MARKET STATUS (Function #1)
+// ═══════════════════════════════════════
+async function checkMarketStatus() {
+  if (marketForceOverride) return; // respect manual force open/close
+  try {
+    const r = await fetch(`${API}/market/status`);
+    if (r.ok) {
+      const d = await r.json();
+      state.marketOpen = d.market_open;
+    } else throw new Error();
+  } catch {
+    // Fallback: simulate based on time
+    const now  = new Date();
+    const h    = now.getHours(), m = now.getMinutes();
+    const mins = h * 60 + m;
+    const open  = parseInt(document.getElementById('admin-cur-open').textContent.replace(':',''));
+    const close = parseInt(document.getElementById('admin-cur-close').textContent.replace(':',''));
+    state.marketOpen = now.getDay() > 0 && now.getDay() < 6 && mins >= 570 && mins < 960;
+  }
+  updateMarketUI();
+}
+
+function updateMarketUI() {
+  const dot    = document.getElementById('market-dot');
+  const txt    = document.getElementById('market-status-text');
+  const banner = document.getElementById('market-status-banner');
+  const admStat= document.getElementById('admin-market-status');
+
+  if (state.marketOpen) {
+    dot.classList.add('open');
+    txt.textContent = 'OPEN';
+    if (banner) { banner.textContent = '● OPEN'; banner.style.color = 'var(--accent)'; }
+    if (admStat) admStat.innerHTML = '<span class="tag tag-executed">OPEN</span>';
+  } else {
+    dot.classList.remove('open');
+    txt.textContent = 'CLOSED';
+    if (banner) { banner.textContent = '● CLOSED'; banner.style.color = 'var(--red)'; }
+    if (admStat) admStat.innerHTML = '<span class="tag tag-canceled">CLOSED</span>';
+  }
+
+  // Show/hide closed warning in modals
+  const w1 = document.getElementById('market-closed-warning');
+  const w2 = document.getElementById('market-closed-warning-sell');
+  if (w1) w1.style.display = state.marketOpen ? 'none' : 'block';
+  if (w2) w2.style.display = state.marketOpen ? 'none' : 'block';
+}
+
+// ═══════════════════════════════════════
+//  STOCKS / PRICE GENERATOR (Function #5)
+// ═══════════════════════════════════════
+function fmt(cents) {
+  return '$' + (cents/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtBig(n) {
+  if (n >= 1e12) return (n/1e12).toFixed(2)+'T';
+  if (n >= 1e9)  return (n/1e9).toFixed(2)+'B';
+  return n.toLocaleString();
+}
+
+async function loadStocks() {
+  try {
+    const r = await fetch(`${API}/market/stocks`);
+    if (r.ok) state.stocks = await r.json();
+    else throw new Error();
+  } catch {
+    state.stocks = JSON.parse(JSON.stringify(MOCK_STOCKS));
+  }
+  renderStocks();
+  renderTicker();
+  updateHeaderCash();
+}
+
+function renderStocks() {
+  const tbody = document.getElementById('stocks-tbody');
+  if (!state.stocks.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">📭</div><p>No stocks available.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.stocks.map(s => {
+    const cap    = (s.volume * s.current_price_cents / 100);
+    const chg    = s.current_price_cents - s.opening_price_cents;
+    const chgPct = ((chg / s.opening_price_cents) * 100).toFixed(2);
+    const isUp   = chg >= 0;
+    return `<tr>
+      <td><span style="font-family:var(--display);font-weight:700;font-size:15px">${s.ticker}</span></td>
+      <td class="muted">${s.company_name}</td>
+      <td class="mono ${isUp?'green':'red'}">${fmt(s.current_price_cents)} <small style="font-size:10px">${isUp?'+':''}${chgPct}%</small></td>
+      <td class="mono muted">${fmt(s.opening_price_cents)}</td>
+      <td class="mono green">${fmt(s.daily_high_cents)}</td>
+      <td class="mono red">${fmt(s.daily_low_cents)}</td>
+      <td class="mono muted">${fmtBig(s.volume)}</td>
+      <td class="mono muted">$${fmtBig(cap)}</td>
+      <td>
+        <button class="btn btn-buy btn-sm" onclick="openBuyModal('${s.ticker}')">Buy</button>
+        <button class="btn btn-sell btn-sm" style="margin-left:6px" onclick="openSellModal('${s.ticker}')">Sell</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTicker() {
+  const items = state.stocks.map(s => {
+    const chg = s.current_price_cents - s.opening_price_cents;
+    const cls  = chg >= 0 ? 'up' : 'down';
+    const sign = chg >= 0 ? '▲' : '▼';
+    return `<span class="ticker-item"><b>${s.ticker}</b> <span class="${cls}">${fmt(s.current_price_cents)} ${sign}</span></span>`;
+  }).join('');
+  const el = document.getElementById('ticker-inner');
+  if (el) el.innerHTML = items + items;
+}
+
+// Simulates the backend background thread (±2% every 15s)
+function tickPrices() {
+  const snapshot = state.stocks.map(s => ({ ticker: s.ticker, before: s.current_price_cents }));
+  state.stocks.forEach(s => {
+    const pct     = (Math.random() - 0.5) * 0.04; // ±2%
+    const newPrice = Math.max(100, Math.round(s.current_price_cents * (1 + pct)));
+    s.current_price_cents = newPrice;
+    s.daily_high_cents    = Math.max(s.daily_high_cents, newPrice);
+    s.daily_low_cents     = Math.min(s.daily_low_cents, newPrice);
+  });
+  renderStocks();
+  renderTicker();
+  if (state.user?.role === 'admin') renderAdminStocks();
+  // Log the update
+  logPriceUpdate(snapshot, 'Auto (15s thread)');
+}
+
+// Manual price generator trigger (Function #5)
+async function triggerPriceGenerator() {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spin">⚡</span> Generating...';
+
+  try {
+    // Try real endpoint first
+    const r = await fetch(`${API}/market/generate-prices`, { method:'POST' });
+    if (r.ok) {
+      const d = await r.json();
+      state.stocks = d.stocks || state.stocks;
+    } else throw new Error();
+  } catch {
+    // Fallback: apply random prices locally
+    tickPrices();
+  }
+
+  toast('Price generator triggered — all stock prices updated', 'info');
+  btn.disabled  = false;
+  btn.innerHTML = '⚡ Generate Prices';
+}
+
+function logPriceUpdate(snapshot, source) {
+  const ts = new Date().toLocaleTimeString();
+  const entries = snapshot.map(({ ticker, before }) => {
+    const after = state.stocks.find(s => s.ticker === ticker)?.current_price_cents || before;
+    const diff  = after - before;
+    const sign  = diff >= 0 ? '+' : '';
+    const cls   = diff >= 0 ? 'up' : 'down';
+    return `<div class="log-entry">[${ts}] ${source} — ${ticker}: ${fmt(before)} → <span class="${cls}">${fmt(after)} (${sign}${((diff/before)*100).toFixed(2)}%)</span></div>`;
+  }).join('');
+
+  const log1 = document.getElementById('price-gen-log');
+  const log2 = document.getElementById('admin-price-log');
+  if (log1) { log1.innerHTML = entries + log1.innerHTML; }
+  if (log2) { log2.innerHTML = entries + log2.innerHTML; }
+}
+
+function updateHeaderCash() {
+  document.getElementById('header-cash').textContent = fmt(DEMO_CASH);
+}
+
+// ═══════════════════════════════════════
+//  BUY MODAL (Function #2)
+// ═══════════════════════════════════════
+let buyStock = null;
+
+function openBuyModal(ticker) {
+  buyStock = state.stocks.find(s => s.ticker === ticker);
+  if (!buyStock) return;
+  document.getElementById('buy-ticker-display').value = `${ticker} — ${buyStock.company_name}`;
+  document.getElementById('buy-shares').value         = '';
+  document.getElementById('buy-price').textContent    = fmt(buyStock.current_price_cents);
+  document.getElementById('buy-cost').textContent     = '—';
+  document.getElementById('buy-avail').textContent    = fmt(DEMO_CASH);
+  document.getElementById('buy-after').textContent    = '—';
+  updateMarketUI();
+  openModal('buy-modal');
+}
+
+function updateBuyCalc() {
+  const shares = parseInt(document.getElementById('buy-shares').value) || 0;
+  if (!buyStock || shares <= 0) return;
+  const cost  = buyStock.current_price_cents * shares;
+  const after = DEMO_CASH - cost;
+  document.getElementById('buy-cost').textContent  = fmt(cost);
+  const el = document.getElementById('buy-after');
+  el.textContent = fmt(Math.max(0, after));
+  el.className   = 'val mono ' + (after >= 0 ? '' : 'red');
+}
+
+async function submitBuy() {
+  const shares = parseInt(document.getElementById('buy-shares').value);
+  if (!shares || shares <= 0) return toast('Enter a valid share count', 'error');
+
+  // Market closed check (Function #1)
+  if (!state.marketOpen) {
+    toast('⛔ Market is closed — 403 Forbidden (market_guard.py enforced)', 'error');
+    return;
+  }
+
+  const cost = buyStock.current_price_cents * shares;
+  if (cost > DEMO_CASH) return toast('Insufficient cash balance', 'error');
+
+  try {
+    const r = await fetch(`${API}/orders/buy`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: state.user.id, ticker: buyStock.ticker, shares })
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      return toast(d.detail || 'Order failed', 'error');
+    }
+  } catch { /* demo mode */ }
+
+  DEMO_CASH -= cost;
+  DEMO_HOLDINGS[buyStock.ticker] = (DEMO_HOLDINGS[buyStock.ticker] || 0) + shares;
+  DEMO_TXNS.unshift({ date: new Date().toLocaleString(), type:'buy', ticker:buyStock.ticker, shares, amount:cost, status:'executed' });
+  updateHeaderCash();
+  closeModal('buy-modal');
+  toast(`✅ Bought ${shares} shares of ${buyStock.ticker} for ${fmt(cost)}`, 'success');
+}
+
+// ═══════════════════════════════════════
+//  SELL MODAL (Function #2)
+// ═══════════════════════════════════════
+let sellStock = null;
+
+function openSellModal(ticker) {
+  sellStock = state.stocks.find(s => s.ticker === ticker);
+  if (!sellStock) return;
+  const owned = DEMO_HOLDINGS[ticker] || 0;
+  document.getElementById('sell-ticker-display').value = `${ticker} — ${sellStock.company_name}`;
+  document.getElementById('sell-shares').value         = '';
+  document.getElementById('sell-price').textContent    = fmt(sellStock.current_price_cents);
+  document.getElementById('sell-owned').textContent    = owned + ' shares';
+  document.getElementById('sell-proceeds').textContent = '—';
+  updateMarketUI();
+  openModal('sell-modal');
+}
+
+function updateSellCalc() {
+  const shares = parseInt(document.getElementById('sell-shares').value) || 0;
+  if (!sellStock || shares <= 0) return;
+  const proceeds = sellStock.current_price_cents * shares;
+  document.getElementById('sell-proceeds').textContent = fmt(proceeds);
+}
+
+async function submitSell() {
+  const shares = parseInt(document.getElementById('sell-shares').value);
+  if (!shares || shares <= 0) return toast('Enter a valid share count', 'error');
+
+  // Market closed check (Function #1)
+  if (!state.marketOpen) {
+    toast('⛔ Market is closed — 403 Forbidden (market_guard.py enforced)', 'error');
+    return;
+  }
+
+  const owned = DEMO_HOLDINGS[sellStock.ticker] || 0;
+  if (shares > owned) return toast(`You only own ${owned} shares`, 'error');
+
+  const proceeds = sellStock.current_price_cents * shares;
+
+  try {
+    const r = await fetch(`${API}/orders/sell`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: state.user.id, ticker: sellStock.ticker, shares })
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      return toast(d.detail || 'Order failed', 'error');
+    }
+  } catch { /* demo mode */ }
+
+  DEMO_CASH += proceeds;
+  DEMO_HOLDINGS[sellStock.ticker] -= shares;
+  if (DEMO_HOLDINGS[sellStock.ticker] <= 0) delete DEMO_HOLDINGS[sellStock.ticker];
+  DEMO_TXNS.unshift({ date: new Date().toLocaleString(), type:'sell', ticker:sellStock.ticker, shares, amount:proceeds, status:'executed' });
+  updateHeaderCash();
+  closeModal('sell-modal');
+  toast(`✅ Sold ${shares} shares of ${sellStock.ticker} for ${fmt(proceeds)}`, 'success');
+}
+
+// ═══════════════════════════════════════
+//  PORTFOLIO (Function #3)
+// ═══════════════════════════════════════
+function renderPortfolio() {
+  let holdValue = 0;
+  const tickers = Object.keys(DEMO_HOLDINGS).filter(t => DEMO_HOLDINGS[t] > 0);
+
+  tickers.forEach(t => {
+    const s = state.stocks.find(x => x.ticker === t);
+    if (s) holdValue += s.current_price_cents * DEMO_HOLDINGS[t];
+  });
+
+  document.getElementById('port-cash').textContent      = fmt(DEMO_CASH);
+  document.getElementById('port-value').textContent     = fmt(holdValue);
+  document.getElementById('port-total').textContent     = fmt(DEMO_CASH + holdValue);
+  document.getElementById('port-positions').textContent = tickers.length;
+
+  const list = document.getElementById('holdings-list');
+  if (!tickers.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>No holdings yet. Buy some stocks from the Market.</p></div>';
+    return;
+  }
+
+  list.innerHTML = tickers.map(t => {
+    const s      = state.stocks.find(x => x.ticker === t);
+    const price  = s ? s.current_price_cents : 0;
+    const shares = DEMO_HOLDINGS[t];
+    const worth  = price * shares;
+    const pct    = holdValue > 0 ? (worth / holdValue * 100) : 0;
+    return `<div class="holding-row">
+      <div class="holding-ticker">${t}</div>
+      <div class="holding-bar-wrap">
+        <div class="holding-bar-label">
+          <span>${s ? s.company_name : t}</span>
+          <span>${pct.toFixed(1)}% of holdings</span>
+        </div>
+        <div class="holding-bar"><div class="holding-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <button class="btn btn-sell btn-sm" onclick="openSellModal('${t}')">Sell</button>
+        <div class="holding-value">
+          <div class="shares mono">${shares} shares</div>
+          <div class="worth">${fmt(worth)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  HISTORY (Function #3)
+// ═══════════════════════════════════════
+function renderHistory() {
+  const tbody = document.getElementById('history-tbody');
+  document.getElementById('txn-count').textContent = `${DEMO_TXNS.length} records`;
+  if (!DEMO_TXNS.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div><p>No transactions yet.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = DEMO_TXNS.map(tx => `<tr>
+    <td class="mono muted" style="font-size:12px">${tx.date}</td>
+    <td><span class="tag tag-${tx.type}">${tx.type.toUpperCase()}</span></td>
+    <td class="mono">${tx.ticker || '—'}</td>
+    <td class="mono">${tx.shares != null ? tx.shares : '—'}</td>
+    <td class="mono ${tx.type==='sell'||tx.type==='deposit'?'green':''}">${fmt(tx.amount)}</td>
+    <td><span class="tag tag-executed">${tx.status}</span></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════
+//  CASH
+// ═══════════════════════════════════════
+function renderCash() {
+  document.getElementById('cash-balance-display').textContent = fmt(DEMO_CASH);
+}
+
+function doCash(type) {
+  const amt  = parseFloat(document.getElementById('cash-amount').value);
+  if (!amt || amt <= 0) return toast('Enter a valid amount', 'error');
+  const cents = Math.round(amt * 100);
+  if (type === 'withdraw' && cents > DEMO_CASH) return toast('Insufficient funds', 'error');
+  if (type === 'deposit') DEMO_CASH += cents;
+  else                     DEMO_CASH -= cents;
+  DEMO_TXNS.unshift({ date: new Date().toLocaleString(), type, ticker:null, shares:null, amount:cents, status:'executed' });
+  updateHeaderCash();
+  renderCash();
+  document.getElementById('cash-amount').value = '';
+  toast(`${type === 'deposit' ? 'Deposited' : 'Withdrew'} ${fmt(cents)}`, 'success');
+}
+
+// ═══════════════════════════════════════
+//  ADMIN (Function #4)
+// ═══════════════════════════════════════
+function renderAdminStocks() {
+  const tbody = document.getElementById('admin-stocks-tbody');
+  const count = document.getElementById('admin-stock-count');
+  if (count) count.textContent = `${state.stocks.length} stocks`;
+  tbody.innerHTML = state.stocks.map(s => {
+    const cap = (s.volume * s.current_price_cents / 100);
+    return `<tr>
+      <td><span style="font-family:var(--display);font-weight:700">${s.ticker}</span></td>
+      <td class="muted">${s.company_name}</td>
+      <td class="mono green">${fmt(s.current_price_cents)}</td>
+      <td class="mono muted">${fmt(s.opening_price_cents)}</td>
+      <td class="mono green">${fmt(s.daily_high_cents)}</td>
+      <td class="mono red">${fmt(s.daily_low_cents)}</td>
+      <td class="mono muted">${fmtBig(s.volume)}</td>
+      <td class="mono muted">$${fmtBig(cap)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function adminCreateStock() {
+  const ticker  = document.getElementById('admin-ticker').value.trim().toUpperCase();
+  const company = document.getElementById('admin-company').value.trim();
+  const price   = parseFloat(document.getElementById('admin-price').value);
+  const volume  = parseInt(document.getElementById('admin-volume').value);
+
+  if (!ticker || !company || !price || !volume) return toast('Fill all fields', 'error');
+  if (state.stocks.find(s => s.ticker === ticker)) return toast('Ticker already exists', 'error');
+
+  const priceCents = Math.round(price * 100);
+
+  try {
+    const r = await fetch(`${API}/admin/stocks/create?ticker=${ticker}&company_name=${encodeURIComponent(company)}&volume=${volume}&initial_price=${price}`, { method:'POST' });
+    if (!r.ok) throw new Error();
+  } catch { /* demo mode */ }
+
+  state.stocks.push({
+    ticker, company_name: company,
+    current_price_cents:  priceCents,
+    opening_price_cents:  priceCents,
+    daily_high_cents:     priceCents,
+    daily_low_cents:      priceCents,
+    volume
+  });
+
+  ['admin-ticker','admin-company','admin-price','admin-volume'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  renderAdminStocks();
+  renderStocks();
+  renderTicker();
+  toast(`✅ Stock ${ticker} created — ${company} @ ${fmt(priceCents)}`, 'success');
+}
+
+async function adminSaveHours() {
+  const open  = document.getElementById('admin-open').value;
+  const close = document.getElementById('admin-close').value;
+  if (!open || !close) return toast('Set both open and close times', 'error');
+
+  try {
+    await fetch(`${API}/admin/market/hours`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ opens_at: open, closes_at: close })
+    });
+  } catch { /* demo mode */ }
+
+  document.getElementById('admin-cur-open').textContent  = open;
+  document.getElementById('admin-cur-close').textContent = close;
+  document.getElementById('market-hours-display').textContent = `Hours: ${open} – ${close}`;
+  marketForceOverride = false; // let the interval take over again
+  checkMarketStatus();
+  toast(`✅ Market hours saved: ${open} – ${close}`, 'success');
+}
+
+function adminCloseMarket() {
+  marketForceOverride = true;
+  state.marketOpen = false;
+  updateMarketUI();
+  toast('Market forced CLOSED — all trades will return 403', 'info');
+}
+
+function adminOpenMarket() {
+  marketForceOverride = true;
+  state.marketOpen = true;
+  updateMarketUI();
+  toast('Market forced OPEN — trading is now active', 'info');
+}
+
+// ═══════════════════════════════════════
+//  MODALS + UTILS
+// ═══════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+</script>
+</body>
+</html>
